@@ -113,3 +113,14 @@ Alternatively, make sure that the checkpoint file is in its corresponding output
 For each low to high resolution setting, hydra creates a folder under `outputs/<dset-name>/<experiment-name>`
 
 Make sure that `restart: false` in `conf/main_config.yaml`
+
+### Citation 
+
+@inproceedings{Abreu2024lamir,
+        author    = {Wallace Abreu and Luiz Wagner Pereira Biscainho},
+        title     = {AEROMamba: An Efficient Architecture for Audio Super-Resolution Using Generative Adversarial Networks and State Space Models},
+        booktitle = {Proceedings of the 1st Latin American Music Information Retrieval Workshop},
+        year      = {2024},
+        address   = {Rio de Janeiro, Brazil},
+      }
+      
