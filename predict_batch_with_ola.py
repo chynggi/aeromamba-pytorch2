@@ -89,6 +89,10 @@ def main(args):
             lr_sig = resample(lr_sig, sr, target_lr_sr)
             sr = target_lr_sr
         
+        # Store original LR length BEFORE upsampling
+        original_lr_length = lr_sig.shape[-1]
+        original_lr_sr = sr  # This is 11025Hz
+        
         if args.experiment.upsample:
             lr_sig = resample(lr_sig, sr, args.experiment.hr_sr)
             sr = args.experiment.hr_sr
@@ -96,12 +100,9 @@ def main(args):
         logger.info(f'lr wav shape: {lr_sig.shape}')
         logger.info(f'Processing {n_channels} channel(s)')
         
-        # Store original input length for accurate trimming
-        original_lr_length = lr_sig.shape[-1]
-        
         # Calculate expected output length based on upsampling
         if args.experiment.upsample:
-            scale_factor = args.experiment.hr_sr // sr
+            scale_factor = args.experiment.hr_sr // original_lr_sr
             expected_output_length = original_lr_length * scale_factor
         else:
             expected_output_length = original_lr_length

@@ -63,6 +63,10 @@ def main(args):
         lr_sig = resample(lr_sig, sr, target_lr_sr)
         sr = target_lr_sr
     
+    # Store original LR length BEFORE upsampling
+    original_lr_length = lr_sig.shape[-1]
+    original_lr_sr = sr  # This is 11025Hz
+    
     if args.experiment.upsample:
         lr_sig = resample(lr_sig, sr, args.experiment.hr_sr)
         sr = args.experiment.hr_sr
@@ -70,12 +74,9 @@ def main(args):
     logger.info(f'lr wav shape: {lr_sig.shape}')
     logger.info(f'Processing {n_channels} channel(s)')
     
-    # Store original input length for accurate trimming
-    original_lr_length = lr_sig.shape[-1]
-    
     # Calculate expected output length based on upsampling
     if args.experiment.upsample:
-        scale_factor = args.experiment.hr_sr // sr
+        scale_factor = args.experiment.hr_sr // original_lr_sr
         expected_output_length = original_lr_length * scale_factor
     else:
         expected_output_length = original_lr_length
@@ -94,46 +95,28 @@ def main(args):
         logger.info(f'Channel {ch_idx}: number of chunks: {n_chunks}')
 
         lr_chunks = []
-        chunk_lengths = []  # Track original chunk lengths
         for i in range(n_chunks):
             start = i * segment_duration_samples
             end = min((i + 1) * segment_duration_samples, lr_sig_ch.shape[-1])
             chunk = lr_sig_ch[:, start:end]
             lr_chunks.append(chunk)
-            chunk_lengths.append(chunk.shape[-1])
 
         pr_chunks = []
 
         model.eval()
         pred_start = time.time()
         with torch.no_grad():
-            for i, (lr_chunk, chunk_len) in enumerate(zip(lr_chunks, chunk_lengths)):
+            for i, lr_chunk in enumerate(lr_chunks):
                 pr_chunk = model(lr_chunk.unsqueeze(0).to(device)).squeeze(0)
                 
-                # Calculate expected output length for this chunk
-                if args.experiment.upsample:
-                    expected_chunk_out_len = chunk_len * scale_factor
-                else:
-                    expected_chunk_out_len = chunk_len
-                
-                # Trim to expected length (remove any padding added by model)
-                if pr_chunk.shape[-1] > expected_chunk_out_len:
-                    pr_chunk = pr_chunk[..., :expected_chunk_out_len]
-                
                 logger.info(f'Channel {ch_idx}, lr chunk {i} shape: {lr_chunk.shape}')
-                logger.info(f'Channel {ch_idx}, pr chunk {i} shape (after trim): {pr_chunk.shape}')
+                logger.info(f'Channel {ch_idx}, pr chunk {i} shape: {pr_chunk.shape}')
                 pr_chunks.append(pr_chunk.cpu())
 
         pred_duration = time.time() - pred_start
         logger.info(f'Channel {ch_idx} prediction duration: {pred_duration}')
 
         pr_ch = torch.concat(pr_chunks, dim=-1)
-        
-        # Final trim to exact expected output length
-        if pr_ch.shape[-1] > expected_output_length:
-            pr_ch = pr_ch[..., :expected_output_length]
-            logger.info(f'Channel {ch_idx}: Trimmed from {pr_ch.shape[-1]} to {expected_output_length} samples')
-        
         all_channels_output.append(pr_ch)
     
     # Combine channels if stereo
