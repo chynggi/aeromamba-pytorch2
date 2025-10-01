@@ -31,7 +31,8 @@ def add_subdir_meta(subdir_path, shared_meta, n_samples_limit):
     if n_samples_limit and len(shared_meta) > n_samples_limit:
         return
     print(f'creating meta for {subdir_path}')
-    audio_files = glob.glob(os.path.join(subdir_path, FILE_PATTERN))
+    # Use recursive glob to find all wav files in subdirectories
+    audio_files = glob.glob(os.path.join(subdir_path, '**', FILE_PATTERN), recursive=True)
     for idx, file in enumerate(audio_files):
         info = get_info(file)
         shared_meta.append((file, info.length))
@@ -56,11 +57,17 @@ def create_subdirs_meta(subdirs_paths, n_samples_limit):
 
 def create_meta(data_dir, n_samples_limit=None):
     root, subdirs, files = next(os.walk(data_dir, topdown=True))
-    #subdirs.sort() no need when using train, test folder organisation
+    subdirs.sort()  # Sort to ensure consistent ordering
     #assert len(subdirs) == TOTAL_N_SPEAKERS
-    train_subdirs_paths = [os.path.join(root, subdirs[1])]
     
-    test_subdirs_paths = [os.path.join(root, subdirs[0])]
+    # Find train and test folders by name
+    train_subdirs_paths = [os.path.join(root, d) for d in subdirs if 'train' in d.lower()]
+    test_subdirs_paths = [os.path.join(root, d) for d in subdirs if 'test' in d.lower()]
+    
+    if not train_subdirs_paths or not test_subdirs_paths:
+        # Fallback to index-based if naming doesn't match
+        train_subdirs_paths = [os.path.join(root, subdirs[1])]
+        test_subdirs_paths = [os.path.join(root, subdirs[0])]
     #assert len(test_subdirs_paths) == TEST_N_SPEAKERS
     train_meta = create_subdirs_meta(train_subdirs_paths, n_samples_limit)
     test_meta = create_subdirs_meta(test_subdirs_paths, n_samples_limit)

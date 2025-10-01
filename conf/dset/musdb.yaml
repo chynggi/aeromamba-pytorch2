@@ -1,0 +1,6 @@
+# @package dset
+name: musdb
+train: egs/musdb/tr
+valid: 
+test: egs/musdb/tt
+

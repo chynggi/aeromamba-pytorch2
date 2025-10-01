@@ -1,6 +1,0 @@
-# @package dset
-name: musdb-mixture-11-44
-train: egs/musdb-mixture-11-44/tr
-valid: 
-test: egs/musdb-mixture-11-44/tt
-

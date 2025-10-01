@@ -83,7 +83,7 @@ class PrHrSet(Dataset):
 class LrHrSet(Dataset):
     def __init__(self, json_dir, lr_sr, hr_sr, stride=None, segment=None,
                  pad=True, with_path=False, stft=False, win_len=64, hop_len=16, n_fft=4096, complex_as_channels=True,
-                 upsample=True, fixed_n_examples=None):
+                 upsample=True, fixed_n_examples=None, power_threshold=0.0):
         """__init__.
         :param json_dir: directory containing both hr.json and lr.json
         :param stride: the stride used for splitting audio sequences in seconds
@@ -97,6 +97,7 @@ class LrHrSet(Dataset):
         :param n_fft: stft number of frequency bins
         :param complex_as_channels: True - move complex dimension to channel dimension. output is [2, Fr, T]
                                     False - last dimension is complex channels, output is [1, Fr, T, 2]
+        :param power_threshold: threshold for filtering low-power segments (applied on-the-fly during training)
         """
 
         self.lr_sr = lr_sr
@@ -105,6 +106,7 @@ class LrHrSet(Dataset):
         self.with_path = with_path
         self.upsample = upsample
         self.fixed_n_examples = fixed_n_examples
+        self.power_threshold = power_threshold
 
         if self.stft:
             self.window_length = int(self.hr_sr / 1000 * win_len)  # 64 ms

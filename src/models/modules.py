@@ -4,7 +4,7 @@ from torch.nn.utils import weight_norm
 
 from src.models.snake import Snake
 from src.models.utils import unfold
-from src.models.mamba.mamba_ssm import Mamba
+from mamba_ssm import Mamba
 
 import typing as tp
 

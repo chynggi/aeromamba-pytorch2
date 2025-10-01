@@ -5,7 +5,7 @@ defaults:
   - override hydra/hydra_logging: colorlog
 
 # Logging and printing, and does not impact training
-num_prints: 10
+num_prints: 1
 device: cuda
 num_workers: 8
 verbose: 0
