@@ -137,7 +137,7 @@ class Solver(object):
 
         if load_from:
             logger.info(f'Loading checkpoint model: {load_from}')
-            package = torch.load(load_from, 'cpu')
+            package = torch.load(load_from, map_location='cpu', weights_only=False)
             self._load(package, load_best)
             if keep_history:
                 self.history = package[SERIALIZE_KEY_HISTORY]

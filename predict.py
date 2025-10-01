@@ -25,7 +25,7 @@ def _load_model(args):
     model_name = args.experiment.model
     checkpoint_file = Path(args.checkpoint_file)
     model = modelFactory.get_model(args)['generator']
-    package = torch.load(checkpoint_file, 'cpu')
+    package = torch.load(checkpoint_file, map_location='cpu', weights_only=False)
     load_best = args.continue_best
     if load_best:
         logger.info(bold(f'Loading model {model_name} from best state.'))
