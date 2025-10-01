@@ -55,12 +55,10 @@ class Audioset:
                 num_frames = self.length
                 offset = self.stride * index
                 
-            if torchaudio.get_audio_backend() in ['soundfile', 'sox_io']:
-                out, sr = torchaudio.load(str(file),
-                                          frame_offset=offset,
-                                          num_frames=num_frames or -1)
-            else:
-                out, sr = torchaudio.load(str(file), offset=offset, num_frames=num_frames)
+            # torchaudio 2.1+ uses frame_offset and num_frames with automatic dispatcher
+            out, sr = torchaudio.load(str(file),
+                                      frame_offset=offset,
+                                      num_frames=num_frames or -1)
 
 
             if sr != self.sample_rate:

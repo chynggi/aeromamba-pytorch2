@@ -1,0 +1,133 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+*.th
+checkpoints/
+*.pkl
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Hydra
+outputs/
+multirun/
+.hydra/
+
+# Weights & Biases
+wandb/
+
+# Data directories
+data/
+dataset/
+datasets/
+down/
+musdb18hq/
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.aac
+
+# Logs
+logs/
+*.log
+
+# Model outputs and experiments
+egs/*/
+!egs/.gitkeep
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Training artifacts
+lightning_logs/
+tb_logs/
+tensorboard/
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environment variables
+.env
+.env.local
+
+# Compiled files
+*.pyc
+*.pyo
+*.pyd
+
+# Database
+*.db
+*.sqlite3
+
+# CSV and data files (if large)
+*.csv
+!musdb_train.csv
+!musdb_validation.csv
+
+# Index and data files
+*.index
+*.data-*
+
+# CUDA
+*.cu.o
+*.cudafe*

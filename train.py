@@ -65,24 +65,9 @@ def run(args):
 
     # Building datasets and loaders
     tr_dataset = LrHrSet(args.dset.train, args.experiment.lr_sr, args.experiment.hr_sr,
-                         args.experiment.stride, args.experiment.segment, upsample=args.experiment.upsample, fixed_n_examples=args.experiment.fixed_n_examples)
-    
-    # Filter items based on the threshold (for silent and low-power segments). Threshold value can be tuned
-    if args.experiment.power_threshold > 0:
-        filtered_lr_set = []
-        filtered_hr_set = []
-        for i in range(len(tr_dataset.lr_set)):
-            lr_signal = tr_dataset.lr_set[i]
-            hr_signal = tr_dataset.hr_set[i]
-            if hr_signal is not None:
-                hr_power = torch.square(hr_signal).sum() / args.experiment.hr_sr  
-                if hr_power >= args.experiment.power_threshold:
-                    filtered_lr_set.append(lr_signal)
-                    filtered_hr_set.append(hr_signal)
-
-        # Replace lr_set and hr_set with filtered lists
-        tr_dataset.lr_set = filtered_lr_set
-        tr_dataset.hr_set = filtered_hr_set
+                         args.experiment.stride, args.experiment.segment, upsample=args.experiment.upsample, 
+                         fixed_n_examples=args.experiment.fixed_n_examples, 
+                         power_threshold=args.experiment.power_threshold)
 
     tr_loader = distrib.loader(tr_dataset, batch_size=args.experiment.batch_size, shuffle=True,
                                num_workers=args.num_workers)
