@@ -77,44 +77,68 @@ def main(args):
         file_basename = Path(filename).stem
         output_dir = args.output
         lr_sig, sr = torchaudio.load(str(filename))
-        if lr_sig.shape[1] > 1:
-            lr_sig = torch.mean(lr_sig, dim=0, keepdim=True)
+        
+        # Check if input is stereo
+        is_stereo = lr_sig.shape[0] > 1
+        n_channels = lr_sig.shape[0]
+        
+        # Force resample to 11025Hz if input is not 11025Hz
+        target_lr_sr = 11025
+        if sr != target_lr_sr:
+            logger.info(f'Resampling input from {sr}Hz to {target_lr_sr}Hz')
+            lr_sig = resample(lr_sig, sr, target_lr_sr)
+            sr = target_lr_sr
+        
         if args.experiment.upsample:
             lr_sig = resample(lr_sig, sr, args.experiment.hr_sr)
             sr = args.experiment.hr_sr
 
         logger.info(f'lr wav shape: {lr_sig.shape}')
+        logger.info(f'Processing {n_channels} channel(s)')
 
         segment_duration_samples = sr * SEGMENT_DURATION_SEC
         W_hr = 44095 # 44100 samples minus the edge effect samples
         W_lr = 11025
         overlap_hr = 900 #heuristic value
         overlap_lr = overlap_hr // 4
-        n_chunks = math.ceil(lr_sig.shape[-1] / (W_lr - overlap_lr))
-        logger.info(f'number of chunks: {n_chunks}')
+        
+        # Process each channel separately
+        all_channels_output = []
+        
+        for ch_idx in range(n_channels):
+            lr_sig_ch = lr_sig[ch_idx:ch_idx+1] if is_stereo else lr_sig
+            n_chunks = math.ceil(lr_sig_ch.shape[-1] / (W_lr - overlap_lr))
+            logger.info(f'Channel {ch_idx}: number of chunks: {n_chunks}')
 
+            lr_chunks = []
+            for i in range(n_chunks):
+                start = i * (W_lr - overlap_lr)
+                end = min(start + W_lr, lr_sig_ch.shape[-1])
+                lr_chunks.append(lr_sig_ch[:, start:end])
+            pr_chunks = []
 
-        lr_chunks = []
-        for i in range(n_chunks):
-            start = i * (W_lr - overlap_lr)
-            end = min(start + W_lr, lr_sig.shape[-1])
-            lr_chunks.append(lr_sig[:, start:end])
-        pr_chunks = []
+            model.eval()
+            pred_start = time.time()
 
-        model.eval()
-        pred_start = time.time()
+            with torch.no_grad():
+                for i, lr_chunk in enumerate(lr_chunks):
+                    pr_chunk = model(lr_chunk.unsqueeze(0).to(device)).squeeze(0)
+                    #remove edge effect samples (only the 4 final samples are distorted)
+                    pr_chunk = pr_chunk[:, :-5]
+                    pr_chunks.append(pr_chunk.cpu())
 
-        with torch.no_grad():
-            for i, lr_chunk in enumerate(lr_chunks):
-                pr_chunk = model(lr_chunk.unsqueeze(0).to(device)).squeeze(0)
-                #remove edge effect samples (only the 4 final samples are distorted)
-                pr_chunk = pr_chunk[:, :-5]
-                pr_chunks.append(pr_chunk.cpu())
+            pred_duration = time.time() - pred_start
+            logger.info(f'Channel {ch_idx} prediction duration: {pred_duration}')
 
-        pred_duration = time.time() - pred_start
-        logger.info(f'prediction duration: {pred_duration}')
-
-        pr_ola = overlap_and_add(pr_chunks, overlap=overlap_hr, window_len=W_hr)
+            pr_ola_ch = overlap_and_add(pr_chunks, overlap=overlap_hr, window_len=W_hr)
+            all_channels_output.append(pr_ola_ch)
+        
+        # Combine channels for output
+        if is_stereo:
+            pr_ola = np.stack(all_channels_output, axis=-1)  # Shape: (samples, channels)
+        else:
+            pr_ola = all_channels_output[0]
+        
         logger.info(f'pr wav shape: {pr_ola.shape}')
 
         out_filename_ola = os.path.join(output_dir, file_basename + '.wav')

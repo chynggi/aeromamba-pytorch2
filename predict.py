@@ -51,40 +51,63 @@ def main(args):
     file_basename = Path(filename).stem
     output_dir = args.output
     lr_sig, sr = torchaudio.load(str(filename))
-    if lr_sig.shape[1] > 1:
-        lr_sig = torch.mean(lr_sig, dim=0, keepdim=True)
-
+    
+    # Check if input is stereo
+    is_stereo = lr_sig.shape[0] > 1
+    n_channels = lr_sig.shape[0]
+    
+    # Force resample to 11025Hz if input is not 11025Hz
+    target_lr_sr = 11025
+    if sr != target_lr_sr:
+        logger.info(f'Resampling input from {sr}Hz to {target_lr_sr}Hz')
+        lr_sig = resample(lr_sig, sr, target_lr_sr)
+        sr = target_lr_sr
+    
     if args.experiment.upsample:
         lr_sig = resample(lr_sig, sr, args.experiment.hr_sr)
         sr = args.experiment.hr_sr
 
     logger.info(f'lr wav shape: {lr_sig.shape}')
+    logger.info(f'Processing {n_channels} channel(s)')
 
     segment_duration_samples = sr * SEGMENT_DURATION_SEC
-    n_chunks = math.ceil(lr_sig.shape[-1] / segment_duration_samples)
-    logger.info(f'number of chunks: {n_chunks}')
+    
+    # Process each channel separately
+    all_channels_output = []
+    
+    for ch_idx in range(n_channels):
+        lr_sig_ch = lr_sig[ch_idx:ch_idx+1] if is_stereo else lr_sig
+        n_chunks = math.ceil(lr_sig_ch.shape[-1] / segment_duration_samples)
+        logger.info(f'Channel {ch_idx}: number of chunks: {n_chunks}')
 
-    lr_chunks = []
-    for i in range(n_chunks):
-        start = i * segment_duration_samples
-        end = min((i + 1) * segment_duration_samples, lr_sig.shape[-1])
-        lr_chunks.append(lr_sig[:, start:end])
+        lr_chunks = []
+        for i in range(n_chunks):
+            start = i * segment_duration_samples
+            end = min((i + 1) * segment_duration_samples, lr_sig_ch.shape[-1])
+            lr_chunks.append(lr_sig_ch[:, start:end])
 
-    pr_chunks = []
+        pr_chunks = []
 
-    model.eval()
-    pred_start = time.time()
-    with torch.no_grad():
-        for i, lr_chunk in enumerate(lr_chunks):
-            pr_chunk = model(lr_chunk.unsqueeze(0).to(device)).squeeze(0)
-            logger.info(f'lr chunk {i} shape: {lr_chunk.shape}')
-            logger.info(f'pr chunk {i} shape: {pr_chunk.shape}')
-            pr_chunks.append(pr_chunk.cpu())
+        model.eval()
+        pred_start = time.time()
+        with torch.no_grad():
+            for i, lr_chunk in enumerate(lr_chunks):
+                pr_chunk = model(lr_chunk.unsqueeze(0).to(device)).squeeze(0)
+                logger.info(f'Channel {ch_idx}, lr chunk {i} shape: {lr_chunk.shape}')
+                logger.info(f'Channel {ch_idx}, pr chunk {i} shape: {pr_chunk.shape}')
+                pr_chunks.append(pr_chunk.cpu())
 
-    pred_duration = time.time() - pred_start
-    logger.info(f'prediction duration: {pred_duration}')
+        pred_duration = time.time() - pred_start
+        logger.info(f'Channel {ch_idx} prediction duration: {pred_duration}')
 
-    pr = torch.concat(pr_chunks, dim=-1)
+        pr_ch = torch.concat(pr_chunks, dim=-1)
+        all_channels_output.append(pr_ch)
+    
+    # Combine channels if stereo
+    if is_stereo:
+        pr = torch.cat(all_channels_output, dim=0)
+    else:
+        pr = all_channels_output[0]
 
     logger.info(f'pr wav shape: {pr.shape}')
 
