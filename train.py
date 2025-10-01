@@ -25,7 +25,10 @@ def run(args):
     from src.solver import Solver
     logger.info(f'calling distrib.init')
     distrib.init(args)
-    torch.autograd.set_detect_anomaly(True)
+    # Note: set_detect_anomaly is now optional and can be enabled via config for debugging
+    # For production, it's disabled for better performance
+    if hasattr(args, 'detect_anomaly') and args.detect_anomaly:
+        torch.autograd.set_detect_anomaly(True)
 
     _init_wandb_run(args)
 
@@ -39,7 +42,13 @@ def run(args):
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
 
+    # Enable TF32 for better performance on Ampere GPUs and later (CUDA 12.x compatible)
+    if torch.cuda.is_available() and hasattr(args, 'use_tf32') and args.use_tf32:
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        logger.info("TF32 enabled for improved performance on Ampere+ GPUs")
     torch.backends.cudnn.benchmark = True
+    
     models = modelFactory.get_model(args)
     for model_name, model in models.items():
         print_network(model_name, model, logger)

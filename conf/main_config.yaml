@@ -32,6 +32,10 @@ keep_history: true
 seed: 2036
 dummy: '' # use this if you want twice the same exp, with a different name
 
+# PyTorch 2.x specific settings
+detect_anomaly: false # Enable gradient anomaly detection (debug only, significant performance impact)
+use_tf32: true # Enable TF32 for better performance on Ampere+ GPUs (RTX 30xx/40xx, A100)
+
 # Evaluation stuff
 visqol: False # compute visqol?
 visqol_path: # *INSERT ABSOLUTE PATH TO VISQOL HERE*

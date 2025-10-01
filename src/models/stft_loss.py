@@ -19,12 +19,12 @@ def stft(x, fft_size, hop_size, win_length, window):
     Returns:
         Tensor: Magnitude spectrogram (B, #frames, fft_size // 2 + 1).
     """
-    x_stft = torch.stft(x, fft_size, hop_size, win_length, window)
-    real = x_stft[..., 0]
-    imag = x_stft[..., 1]
-
+    # PyTorch 2.x: use return_complex=True for better performance and compatibility
+    x_stft = torch.stft(x, fft_size, hop_size, win_length, window, return_complex=True)
+    
+    # Get magnitude from complex tensor
     # NOTE(kan-bayashi): clamp is needed to avoid nan or inf
-    return torch.sqrt(torch.clamp(real ** 2 + imag ** 2, min=1e-7)).transpose(2, 1)
+    return torch.clamp(x_stft.abs(), min=1e-7).transpose(2, 1)
 
 
 class SpectralConvergengeLoss(torch.nn.Module):

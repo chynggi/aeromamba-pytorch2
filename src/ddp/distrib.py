@@ -59,6 +59,7 @@ def wrap(model):
     """wrap.
 
     Wrap a model with DDP if distributed training is enabled.
+    PyTorch 2.x compatible with improved settings for better performance.
     """
     if world_size == 1:
         return model
@@ -66,7 +67,9 @@ def wrap(model):
         return DistributedDataParallel(
             model,
             device_ids=[torch.cuda.current_device()],
-            output_device=torch.cuda.current_device())
+            output_device=torch.cuda.current_device(),
+            find_unused_parameters=False,  # Set to True only if needed for debugging
+            gradient_as_bucket_view=True)  # PyTorch 2.x optimization
 
 
 def barrier():

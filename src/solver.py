@@ -257,8 +257,10 @@ class Solver(object):
                         del enhanced_dataloader
                         del enhanced_dataset
 
-                        # Optionally, you can also clear the GPU memory
-                        torch.cuda.empty_cache()
+                        # Clear the GPU memory (more efficient in PyTorch 2.x)
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                            torch.cuda.synchronize()
 
                     if epoch == self.epochs - 1 and self.args.log_results:
                         # log results at last epoch
@@ -269,8 +271,10 @@ class Solver(object):
                             del enhanced_dataloader
                             del enhanced_dataset
 
-                            # Optionally, you can also clear the GPU memory
-                            torch.cuda.empty_cache()
+                            # Clear the GPU memory (more efficient in PyTorch 2.x)
+                            if torch.cuda.is_available():
+                                torch.cuda.empty_cache()
+                                torch.cuda.synchronize()
                         logger.info('logging results to wandb...')
                         create_wandb_table(self.args, enhanced_dataloader, epoch)
 
@@ -446,16 +450,17 @@ class Solver(object):
         pr_time = pr['time']
 
         losses = {'generator': {}, 'discriminator': {}}
-        with torch.autograd.set_detect_anomaly(True):
-            if 'l1' in self.args.losses:
-                losses['generator'].update({'l1': F.l1_loss(pr_time, hr_time)})
-            if 'l2' in self.args.losses:
-                losses['generator'].update({'l2': F.mse_loss(pr_time, hr_time)})
-            if 'stft' in self.args.losses or 'mod_stft' in self.args.losses:
-                stft_loss = self._get_stft_loss(pr_time, hr_time)
-                losses['generator'].update({'stft': stft_loss})
-                
-            if self.adversarial_mode:
+        # Anomaly detection is now optional and can be enabled via config for debugging
+        # For production, it's disabled for better performance in PyTorch 2.x
+        if 'l1' in self.args.losses:
+            losses['generator'].update({'l1': F.l1_loss(pr_time, hr_time)})
+        if 'l2' in self.args.losses:
+            losses['generator'].update({'l2': F.mse_loss(pr_time, hr_time)})
+        if 'stft' in self.args.losses or 'mod_stft' in self.args.losses:
+            stft_loss = self._get_stft_loss(pr_time, hr_time)
+            losses['generator'].update({'stft': stft_loss})
+            
+        if self.adversarial_mode:
                 if 'msd_melgan' in self.args.experiment.discriminator_models:
                     generator_losses, discriminator_loss = self._get_melgan_adversarial_loss(pr_time, hr_time)
                     if not self.args.experiment.only_features_loss:
