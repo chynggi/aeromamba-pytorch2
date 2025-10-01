@@ -51,8 +51,8 @@ class STFTMag(nn.Module):
                           self.nfft,
                           self.hop,
                           window=self.window,
-                          )  # return_complex=False)  #[B, F, TT,2]
-        mag = torch.norm(stft, p=2, dim=-1)  # [B, F, TT]
+                          return_complex=True)  #[B, F, TT]
+        mag = torch.abs(stft)  # [B, F, TT]
         return mag
 
 # taken from: https://github.com/nanahou/metric/blob/master/measure_SNR_LSD.py
