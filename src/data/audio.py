@@ -55,12 +55,17 @@ class Audioset:
                 num_frames = self.length
                 offset = self.stride * index
                 
-            if torchaudio.get_audio_backend() in ['soundfile', 'sox_io']:
-                out, sr = torchaudio.load(str(file),
-                                          frame_offset=offset,
-                                          num_frames=num_frames or -1)
-            else:
-                out, sr = torchaudio.load(str(file), offset=offset, num_frames=num_frames)
+            try:
+                if torchaudio.get_audio_backend() in ['soundfile', 'sox_io']:
+                    out, sr = torchaudio.load(str(file),
+                                              frame_offset=offset,
+                                              num_frames=num_frames or -1)
+                else:
+                    out, sr = torchaudio.load(str(file), offset=offset, num_frames=num_frames)
+            except Exception as e:
+                print(f"Error loading audio file: {file}")
+                print(f"Error details: {str(e)}")
+                raise RuntimeError(f"Failed to decode audio file: {file}") from e
 
 
             if sr != self.sample_rate:

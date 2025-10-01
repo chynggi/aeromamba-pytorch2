@@ -142,12 +142,26 @@ class LrHrSet(Dataset):
     def __getitem__(self, index):
         if self.fixed_n_examples is not None:
             index = random.sample(range(len(self.hr_set)), 1)[0]
-        if self.with_path:
-            hr_sig, hr_path = self.hr_set[index]
-            lr_sig, lr_path = self.lr_set[index]
-        else:
-            hr_sig = self.hr_set[index]
-            lr_sig = self.lr_set[index]
+        
+        # Retry logic for corrupted files
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                if self.with_path:
+                    hr_sig, hr_path = self.hr_set[index]
+                    lr_sig, lr_path = self.lr_set[index]
+                else:
+                    hr_sig = self.hr_set[index]
+                    lr_sig = self.lr_set[index]
+                break  # Success, exit retry loop
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"Warning: Failed to load sample at index {index}, trying another sample. Error: {str(e)}")
+                    # Try a different random index
+                    index = random.randint(0, len(self.hr_set) - 1)
+                else:
+                    print(f"Error: Failed to load sample after {max_retries} attempts.")
+                    raise
         if self.upsample:
             lr_sig = resample(lr_sig, self.lr_sr, self.hr_sr)
             lr_sig = match_signal(lr_sig, hr_sig.shape[-1])
