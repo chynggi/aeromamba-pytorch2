@@ -61,7 +61,7 @@ class Audioset:
                                               frame_offset=offset,
                                               num_frames=num_frames or -1)
                 else:
-                    out, sr = torchaudio.load(str(file), offset=offset, num_frames=num_frames)
+                    out, sr = torchaudio.load(str(file), frame_offset=offset, num_frames=num_frames)
             except Exception as e:
                 print(f"Error loading audio file: {file}")
                 print(f"Error details: {str(e)}")
