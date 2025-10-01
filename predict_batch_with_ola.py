@@ -95,6 +95,19 @@ def main(args):
 
         logger.info(f'lr wav shape: {lr_sig.shape}')
         logger.info(f'Processing {n_channels} channel(s)')
+        
+        # Store original input length for accurate trimming
+        original_lr_length = lr_sig.shape[-1]
+        
+        # Calculate expected output length based on upsampling
+        if args.experiment.upsample:
+            scale_factor = args.experiment.hr_sr // sr
+            expected_output_length = original_lr_length * scale_factor
+        else:
+            expected_output_length = original_lr_length
+        
+        logger.info(f'Original input length: {original_lr_length} samples')
+        logger.info(f'Expected output length: {expected_output_length} samples')
 
         segment_duration_samples = sr * SEGMENT_DURATION_SEC
         W_hr = 44095 # 44100 samples minus the edge effect samples
@@ -131,6 +144,12 @@ def main(args):
             logger.info(f'Channel {ch_idx} prediction duration: {pred_duration}')
 
             pr_ola_ch = overlap_and_add(pr_chunks, overlap=overlap_hr, window_len=W_hr)
+            
+            # Trim to exact expected output length
+            if len(pr_ola_ch) > expected_output_length:
+                pr_ola_ch = pr_ola_ch[:expected_output_length]
+                logger.info(f'Channel {ch_idx}: Trimmed from {len(pr_ola_ch)} to {expected_output_length} samples')
+            
             all_channels_output.append(pr_ola_ch)
         
         # Combine channels for output
@@ -139,7 +158,15 @@ def main(args):
         else:
             pr_ola = all_channels_output[0]
         
-        logger.info(f'pr wav shape: {pr_ola.shape}')
+        # Final safety check: ensure output is exactly the expected length
+        if len(pr_ola) > expected_output_length:
+            logger.info(f'Final trim: {len(pr_ola)} -> {expected_output_length} samples')
+            pr_ola = pr_ola[:expected_output_length]
+        elif len(pr_ola) < expected_output_length:
+            logger.warning(f'Output is shorter than expected: {len(pr_ola)} < {expected_output_length}')
+        
+        logger.info(f'Final pr wav shape: {pr_ola.shape}')
+        logger.info(f'Output duration: {len(pr_ola) / args.experiment.hr_sr:.2f} seconds')
 
         out_filename_ola = os.path.join(output_dir, file_basename + '.wav')
         os.makedirs(output_dir, exist_ok=True)
